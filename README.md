@@ -31,7 +31,7 @@ ustFileObj = pylibust.ustFile([UstNoteObj1,UstNoteObj2,...])
 
 保存文件
 ```python
-ustFileObj.save([the path you want to save your UST file])
+ustFileObj.save('[the path you want to save your UST file]')
 ```
 
 ## 许可证（Lisence）
