@@ -18,4 +18,4 @@ limitations under the License.
 __version__ = 0.1
 
 
-from ust import ustNote, ustFile # noqa
+from .ust import ustNote, ustFile # noqa
