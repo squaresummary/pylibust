@@ -68,6 +68,9 @@ class ustNote:
         strList = ['{}={}'.format(key, value) for key, value in self._attribute.items()]
         return '\n'.join(strList)
 
+    def items(self):
+        return self._attribute.items()
+
 
 class ustFile:
     """
@@ -90,16 +93,16 @@ class ustFile:
             self._noteList = []
             for note in noteIter:
                 if isinstance(note, ustNote):
-                    self._noteList += note
+                    self._noteList += [note]
                 else:
-                    self._noteList += ustNote(note)
+                    self._noteList += [ustNote(note)]
         else:
             self._noteList = list(noteIter)
 
     @classmethod
     def open(cls, path: str):
         notes, version, setting = _parser(path)
-        cls(notes, version, setting)
+        return cls(notes, version, setting)
 
     def save(self, path: str):
         _saver(self, path)
@@ -132,10 +135,10 @@ class ustFile:
         return (i for i in self._noteList)
 
     def __repr__(self):
-        fileContentList = ['#VERSION'] + list(self._versionTuple)
-        fileContentList += ['#SETTING'] + ['{}={}'.format(key, value) for key, value in self._settingDict.items()]
+        fileContentList = ['[#VERSION]'] + list(self._versionTuple)
+        fileContentList += ['[#SETTING]'] + ['{}={}'.format(key, value) for key, value in self._settingDict.items()]
         for number, note in enumerate(self._noteList):
-            fileContentList += ['#{:0>4d}'.format(number)] + ['{}={}'.format(key, value) for key, value in note.items()]
+            fileContentList += ['[#{:0>4d}]'.format(number)] + ['{}={}'.format(key, value) for key, value in note.items()]
         return '\n'.join(fileContentList)
 
     def __len__(self):
@@ -218,33 +221,35 @@ def _parser(path):
 
     # 以下语句用于探测文件编码
     with open(path, 'rb') as file:
-        encodingDict = chardet.detect(file)
+        fileContent = file.read()
+        encodingDict = chardet.detect(fileContent)
 
     # 以下语句逐行读入ust文件并解析
     with open(path, 'rt', encoding=encodingDict['encoding']) as file:
         for row in file:
             # 根据记录状态存储音符
-            if verRecord:
-                version += [row.strip()]
-            if setRecord:
-                setting += tuple((i.strip() for i in row.split('=')))
-            # noteCount 和 RecPos 分别是指示读取和存储位置的指针
-            # 当 noteCount大于RecPos时说明有新的音符读入，将会把旧的音符打包为字典保存
-            # 第一次大于时，没有旧的音符，不会保存
-            if noteCount > RecPos:
-                RecPos += 1
-                if singleNote:
-                    notes += dict(singleNote)
-                    singleNote.clear()
-            if noteRecord:
-                singleNote += tuple((i.strip() for i in row.split('=')))
+            if not row.strip()[0:2] == '[#':
+                if verRecord:
+                    version += [row.strip()]
+                if setRecord:
+                    setting += [tuple((i.strip() for i in row.split('=')))]
+                # noteCount 和 RecPos 分别是指示读取和存储位置的指针
+                # 当 noteCount大于RecPos时说明有新的音符读入，将会把旧的音符打包为字典保存
+                # 第一次大于时，没有旧的音符，不会保存
+                if noteCount > RecPos:
+                    RecPos += 1
+                    if singleNote:
+                        notes += [dict(singleNote)]
+                        singleNote.clear()
+                if noteRecord:
+                    singleNote += [tuple((i.strip() for i in row.split('=')))]
 
             # 根据读入内容更改记录状态
             if row.strip() == '[#VERSION]':
                 verRecord, setRecord, noteRecord = True, False, False
             if row.strip() == '[#SETTING]':
                 verRecord, setRecord, noteRecord = False, True, False
-            if row.strip() == '[#]':
+            if re.match('\[#\w{4}\]',row.strip()):
                 verRecord, setRecord, noteRecord = False, False, True
                 noteCount += 1
 
@@ -263,9 +268,3 @@ def _parser(path):
 def _saver(ustObj, path):
     with open(path, 'xt', encoding='utf8') as file:
         file.write(str(ustObj))
-
-
-if __name__ == '__main__':
-    d = {'Length': 480, 'Lyric': 'R', 'NoteNum': 60}
-    notea = ustNote(d)
-    print(isinstance(notea, ustNote))
