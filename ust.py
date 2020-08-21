@@ -255,8 +255,34 @@ def _parser(path):
 
     # 以下语句进一步处理各个属性的类型
     for note in notes:
+        # 每个音符必须存在长度和音阶两个属性
         note['Length'] = eval(note['Length'])
         note['NoteNum'] = eval(note['NoteNum'])
+        # 其他可选音符属性
+        if 'Overlap' in note:
+            note['Overlap'] = eval(note['Overlap']) if note['Overlap'] != '' else ''
+        if 'PreUtterance' in note:
+            note['PreUtterance'] = eval(note['PreUtterance']) if note['PreUtterance'] != '' else ''
+        if 'StartPoint' in note:
+            note['StartPoint'] = eval(note['StartPoint']) if note['StartPoint'] != '' else ''
+        if 'Tempo' in note:
+            note['Tempo'] = eval(note['Tempo']) if note['Tempo'] != '' else ''
+        if 'Modulation' in note:
+            note['Modulation'] = eval(note['Modulation']) if note['Modulation'] != '' else ''
+        if 'Intensity' in note:
+            note['Intensity'] = eval(note['Intensity']) if note['Intensity'] != '' else ''
+        # 其他可选包络线属性
+        if '@overlap' in note:
+            note['@overlap'] = eval(note['@overlap']) if note['@overlap'] != '' else ''
+        if '@preuttr' in note:
+            note['@preuttr'] = eval(note['@preuttr']) if note['@preuttr'] != '' else ''
+        if '@stpoint' in note:
+            note['@stpoint'] = eval(note['@stpoint']) if note['@stpoint'] != '' else ''
+        # 其他可选音高控制属性
+        if 'PBType' in note:
+            note['PBType'] = eval(note['PBType']) if note['PBType'] != '' else ''
+        if 'PBStart' in note:
+            note['PBStart'] = eval(note['PBStart']) if note['PBStart'] != '' else ''
         # TODO: 解析其他属性
 
     return notes, tuple(version), dict(setting)
