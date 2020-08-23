@@ -198,7 +198,7 @@ class attributeSeq(list):
     这个类存储通常的序列属性。
     """
     def __str__(self):
-        return ','.join([str(item) for item in self])
+        return ','.join(str(item) for item in self)
 
 
 class envelopeSeq(attributeSeq):
@@ -206,13 +206,23 @@ class envelopeSeq(attributeSeq):
     This class stores damn envelope. Evil `%`!
     这个类存储该死的包络线。飴屋加的`%`真是可恶。
     """
-    def __init__(self,iter):
+    def __init__(self,envelope):
         super().__init__()
-        for parameter in iter:
+        for parameter in envelope:
             if parameter == '%':
                 self.append(parameter)
             else:
                 self.append(int(parameter))
+
+
+class PBSSeq(attributeSeq):
+    """
+    This class stores the time and pitch offset between the
+    beginning of the note and first control point. Damn `;`.
+    这个类存储第一个控制点与音符开头的时间和音高偏移量。该死的`;`。
+    """
+    def __str__(self):
+        return ';'.join(str(item) for item in self)
 
 
 # --------------------
