@@ -26,7 +26,7 @@ __all__ = ['ustNote','ustFile']
 # 对音符类和文件类的实现。
 class ustNote:
     """
-    This class is a simple encapsulation of a dict, which stores the attributes
+    This class is a thin wrapper of a dict, which stores the attributes
     of a UST file's note.
     这个类是对字典的简单封装。字典中存有UST文件的音符的属性。
     """
@@ -74,7 +74,7 @@ class ustNote:
 
 class ustFile:
     """
-    This class is a simple encapsulation of list, which stores the note object.
+    This class is a thin wrapper of list, which stores the note object.
     这个类是对列表的简单封装，储存音符对象。
     """
 
@@ -138,7 +138,7 @@ class ustFile:
         fileContentList = ['[#VERSION]'] + list(self._versionTuple)
         fileContentList += ['[#SETTING]'] + ['{}={}'.format(key, value) for key, value in self._settingDict.items()]
         for number, note in enumerate(self._noteList):
-            fileContentList += ['[#{:0>4d}]'.format(number)] + ['{}={}'.format(key, value) for key, value in note.items()]
+            fileContentList += ['[#{:0>4d}]'.format(number)] + ['{}={}'.format(key, str(value)) for key, value in note.items()]
         return '\n'.join(fileContentList)
 
     def __len__(self):
@@ -187,6 +187,32 @@ class ustFile:
             if not isinstance(note, ustNote):
                 note = ustNote(note)
             self._noteList.append(note)
+
+
+# --------------------
+# A class used to store the attribute which is sequence in ust note.
+# 用于存储ust音符属性中的序列的类。
+class attributeSeq(list):
+    """
+    This class stores common sequence attribute.
+    这个类存储通常的序列属性。
+    """
+    def __str__(self):
+        return ','.join([str(item) for item in self])
+
+
+class envelopeSeq(attributeSeq):
+    """
+    This class stores damn envelope. Evil `%`!
+    这个类存储该死的包络线。飴屋加的`%`真是可恶。
+    """
+    def __init__(self,iter):
+        super().__init__()
+        for parameter in iter:
+            if parameter == '%':
+                self.append(parameter)
+            else:
+                self.append(int(parameter))
 
 
 # --------------------
@@ -258,6 +284,7 @@ def _parser(path):
         # 每个音符必须存在长度和音阶两个属性
         note['Length'] = eval(note['Length'])
         note['NoteNum'] = eval(note['NoteNum'])
+
         # 其他可选音符属性
         if 'Overlap' in note:
             note['Overlap'] = eval(note['Overlap']) if note['Overlap'] != '' else ''
@@ -266,18 +293,23 @@ def _parser(path):
         if 'StartPoint' in note:
             note['StartPoint'] = eval(note['StartPoint']) if note['StartPoint'] != '' else ''
         if 'Tempo' in note:
-            note['Tempo'] = eval(note['Tempo']) if note['Tempo'] != '' else ''
+            # 因为飴屋／菖蒲在v0.4.18的更新中有`Tempo=0を無視するようにした`一项
+            note['Tempo'] = eval(note['Tempo']) if note['Tempo'] != '' else 0
         if 'Modulation' in note:
             note['Modulation'] = eval(note['Modulation']) if note['Modulation'] != '' else ''
         if 'Intensity' in note:
             note['Intensity'] = eval(note['Intensity']) if note['Intensity'] != '' else ''
+
         # 其他可选包络线属性
+        if 'Envelope' in note:
+            note['Envelope'] = envelopeSeq(str(note['Envelope'].strip()).split(','))
         if '@overlap' in note:
             note['@overlap'] = eval(note['@overlap']) if note['@overlap'] != '' else ''
         if '@preuttr' in note:
             note['@preuttr'] = eval(note['@preuttr']) if note['@preuttr'] != '' else ''
         if '@stpoint' in note:
             note['@stpoint'] = eval(note['@stpoint']) if note['@stpoint'] != '' else ''
+
         # 其他可选音高控制属性
         if 'PBType' in note:
             note['PBType'] = eval(note['PBType']) if note['PBType'] != '' else ''
