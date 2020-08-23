@@ -312,7 +312,7 @@ def _parser(path):
 
         # 其他可选包络线属性
         if 'Envelope' in note:
-            note['Envelope'] = envelopeSeq(str(note['Envelope'].strip()).split(','))
+            note['Envelope'] = envelopeSeq(note['Envelope'].split(','))
         if '@overlap' in note:
             note['@overlap'] = eval(note['@overlap']) if note['@overlap'] != '' else ''
         if '@preuttr' in note:
@@ -325,7 +325,14 @@ def _parser(path):
             note['PBType'] = eval(note['PBType']) if note['PBType'] != '' else ''
         if 'PBStart' in note:
             note['PBStart'] = eval(note['PBStart']) if note['PBStart'] != '' else ''
-        # TODO: 解析其他属性
+        if 'PBW' in note:
+            note['PBW'] = attributeSeq(map(int,note['PBW'].split(',')))
+        if 'PBY' in note:
+            note['PBY'] = attributeSeq(map(int,note['PBY'].split(',')))
+        if 'PBS' in note:
+            note['PBS'] = PBSSeq(map(int,note['PBS'].split(',')))
+        if 'VBR' in note:
+            note['VBR'] = attributeSeq(map(int,note['VBR'].split(',')))
 
     return notes, tuple(version), dict(setting)
 
