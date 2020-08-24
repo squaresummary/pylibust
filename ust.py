@@ -18,8 +18,8 @@ limitations under the License.
 import chardet
 import re
 
+__all__ = ['ustNote', 'ustFile', 'attributeSeq', 'envelopeSeq', 'PBSSeq']
 
-__all__ = ['ustNote','ustFile']
 
 # --------------------
 # The implement of note class and file class.
@@ -138,7 +138,8 @@ class ustFile:
         fileContentList = ['[#VERSION]'] + list(self._versionTuple)
         fileContentList += ['[#SETTING]'] + ['{}={}'.format(key, value) for key, value in self._settingDict.items()]
         for number, note in enumerate(self._noteList):
-            fileContentList += ['[#{:0>4d}]'.format(number)] + ['{}={}'.format(key, str(value)) for key, value in note.items()]
+            fileContentList += ['[#{:0>4d}]'.format(number)] + ['{}={}'.format(key, str(value)) for key, value in
+                                                                note.items()]
         return '\n'.join(fileContentList)
 
     def __len__(self):
@@ -152,7 +153,7 @@ class ustFile:
         这个方法将会量化音符。即将音符长度对齐到给定的标准长度的整数倍。
         """
         for note in self._noteList:
-            note['Length'] = (round(note['Length']/standard))*standard
+            note['Length'] = (round(note['Length'] / standard)) * standard
             if note['Length'] < 0:
                 del note
 
@@ -164,7 +165,7 @@ class ustFile:
         这个方法会返回最高音符和最低音符的音高组成的元组。二者相减可得音域。
         """
         pitches = [note['NoteNum'] for note in self._noteList if note]
-        return (max(pitches),min(pitches))
+        return (max(pitches), min(pitches))
 
     def insert(self, idx, other):
         if not isinstance(other, ustNote):
@@ -175,14 +176,14 @@ class ustFile:
         for note in other:
             if not isinstance(note, ustNote):
                 note = ustNote(note)
-            self._noteList.insert(idx,note)
+            self._noteList.insert(idx, note)
 
     def append(self, other):
         if not isinstance(other, ustNote):
             other = ustNote(other)
         self._noteList.append(other)
 
-    def extend(self,other):
+    def extend(self, other):
         for note in other:
             if not isinstance(note, ustNote):
                 note = ustNote(note)
@@ -197,6 +198,7 @@ class attributeSeq(list):
     This class stores common sequence attribute.
     这个类存储通常的序列属性。
     """
+
     def __str__(self):
         return ','.join(str(item) for item in self)
 
@@ -206,13 +208,14 @@ class envelopeSeq(attributeSeq):
     This class stores damn envelope. Evil `%`!
     这个类存储该死的包络线。飴屋加的`%`真是可恶。
     """
-    def __init__(self,envelope):
+
+    def __init__(self, envelope):
         super().__init__()
-        for parameter in envelope:
-            if parameter == '%':
-                self.append(parameter)
+        for item in envelope:
+            if item == '%':
+                self.append(item)
             else:
-                self.append(int(parameter))
+                self.append(eval(item))
 
 
 class PBSSeq(attributeSeq):
@@ -221,6 +224,7 @@ class PBSSeq(attributeSeq):
     beginning of the note and first control point. Damn `;`.
     这个类存储第一个控制点与音符开头的时间和音高偏移量。该死的`;`。
     """
+
     def __str__(self):
         return ';'.join(str(item) for item in self)
 
@@ -230,15 +234,74 @@ class PBSSeq(attributeSeq):
 # will raise a error.
 # 属性检查，属性值类型不正确将报错。
 def _attributeCheck(recDict):
+    # 检查必要的音符属性（长度、音阶、歌词）
     if not all([
         isinstance(recDict['Length'], (int, float)),
         isinstance(recDict['Lyric'], str),
         isinstance(recDict['NoteNum'], int)
     ]):
         raise TypeError('The length and pitch of note must be a number, the lyric must be a string.')
+
+    # 检查其他可选音符属性
+    if 'Overlap' in recDict:
+        if not isinstance(recDict['Overlap'], (int, float)):
+            raise TypeError('Overlap must be a number.')
+    if 'PreUtterance' in recDict:
+        if not isinstance(recDict['PreUtterance'], (int, float)):
+            raise TypeError('PreUtterance must be a number.')
+    if 'StartPoint' in recDict:
+        if not isinstance(recDict['StartPoint'], (int, float)):
+            raise TypeError('StartPoint must be a number.')
+    if 'Tempo' in recDict:
+        if not isinstance(recDict['Tempo'], int):
+            raise TypeError('Tempo must be an integer.')
+    if 'Modulation' in recDict:
+        if not isinstance(recDict['Modulation'], (int, float)):
+            raise TypeError('Modulation must be a number.')
+    if 'Intensity' in recDict:
+        if not isinstance(recDict['Intensity'], (int, float)):
+            raise TypeError('Intensity must be a number.')
+    if 'Flags' in recDict:
+        if not isinstance(recDict['Flags'], str):
+            raise TypeError('Flags must be a string.')
+
+    # 检查包络线属性
     if 'Envelope' in recDict:
-        # TODO: 检查对应值的格式
-        pass
+        if not isinstance(recDict['Envelope'], envelopeSeq):
+            raise TypeError('Envelope must be an envelopeSeq object.')
+    if '@overlap' in recDict:
+        if not isinstance(recDict['@overlap'], (int, float)):
+            raise TypeError('Envelope Overlap must be a number.')
+    if '@preuttr' in recDict:
+        if not isinstance(recDict['@preuttr'], (int, float)):
+            raise TypeError('Envelope PreUtterance must be a number.')
+    if '@stpoint' in recDict:
+        if not isinstance(recDict['@stpoint'], (int, float)):
+            raise TypeError('Envelope StartPoint must be a number.')
+
+    # 检查其他可选音高属性
+    if 'PBType' in recDict:
+        if not isinstance(recDict['PBType'], int):
+            raise TypeError('The interval between two control points in mode 1 must be a integer.')
+    if 'PBStart' in recDict:
+        if not isinstance(recDict['PBStart'], int):
+            raise TypeError('The StartPoint of control points in mode 1 must be a integer.')
+    if 'PitchBend' in recDict:
+        if not isinstance(recDict['PitchBend'], attributeSeq):
+            raise TypeError('The list of the control points` Y-axis coordinates in mode 1 must be attributeSeq object.')
+    if 'PBW' in recDict:
+        if not isinstance(recDict['PBW'], attributeSeq):
+            raise TypeError('The list of the control points` X-axis coordinates in mode 2 must be attributeSeq object.')
+    if 'PBY' in recDict:
+        if not isinstance(recDict['PBY'], attributeSeq):
+            raise TypeError('The list of the control points` Y-axis coordinates in mode 2 must be attributeSeq object.')
+    if 'PBS' in recDict:
+        if not isinstance(recDict['PBS'], PBSSeq):
+            raise TypeError('The time and pitch offset between the beginning of the note and first control point' +
+                            'in mode 2 must be PBSSeq object.')
+    if 'VBR' in recDict:
+        if not isinstance(recDict['VBR'], attributeSeq):
+            raise TypeError('The parameters list of auto vibrato must be attributeSeq object.')
 
 
 # --------------------
@@ -285,7 +348,7 @@ def _parser(path):
                 verRecord, setRecord, noteRecord = True, False, False
             if row.strip() == '[#SETTING]':
                 verRecord, setRecord, noteRecord = False, True, False
-            if re.match('\[#\w{4}\]',row.strip()):
+            if re.match('\[#\w{4}]', row.strip()):
                 verRecord, setRecord, noteRecord = False, False, True
                 noteCount += 1
 
@@ -325,14 +388,16 @@ def _parser(path):
             note['PBType'] = eval(note['PBType']) if note['PBType'] != '' else ''
         if 'PBStart' in note:
             note['PBStart'] = eval(note['PBStart']) if note['PBStart'] != '' else ''
+        if 'PitchBend' in note:
+            note['PitchBend'] = attributeSeq(map(eval, note['PitchBend'].split(',')))
         if 'PBW' in note:
-            note['PBW'] = attributeSeq(map(int,note['PBW'].split(',')))
+            note['PBW'] = attributeSeq(map(eval, note['PBW'].split(',')))
         if 'PBY' in note:
-            note['PBY'] = attributeSeq(map(int,note['PBY'].split(',')))
+            note['PBY'] = attributeSeq(eval(item) for item in note['PBY'].split(',') if item != '')
         if 'PBS' in note:
-            note['PBS'] = PBSSeq(map(int,note['PBS'].split(',')))
+            note['PBS'] = PBSSeq(map(eval, note['PBS'].split(';')))
         if 'VBR' in note:
-            note['VBR'] = attributeSeq(map(int,note['VBR'].split(',')))
+            note['VBR'] = attributeSeq(map(eval, note['VBR'].split(',')))
 
     return notes, tuple(version), dict(setting)
 
