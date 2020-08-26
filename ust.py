@@ -79,7 +79,7 @@ class ustFile:
     """
 
     def __init__(self, noteIter: iter, versionTuple=None, settingDict=None, verify=True):
-        if versionTuple is None:
+        if versionTuple is None or versionTuple == ():
             versionTuple = ('UST Version1.2', 'Charset=UTF-8')
         if not isinstance(versionTuple, tuple):
             raise TypeError('The version needs a tuple, but a {}.'.format(type(versionTuple)))
@@ -191,7 +191,7 @@ class ustFile:
 
 
 # --------------------
-# A class used to store the attribute which is sequence in ust note.
+# Classes used to store the attribute which is sequence in ust note.
 # 用于存储ust音符属性中的序列的类。
 class attributeSeq(list):
     """
@@ -253,8 +253,8 @@ def _attributeCheck(recDict):
         if not isinstance(recDict['StartPoint'], (int, float)):
             raise TypeError('StartPoint must be a number.')
     if 'Tempo' in recDict:
-        if not isinstance(recDict['Tempo'], int):
-            raise TypeError('Tempo must be an integer.')
+        if not isinstance(recDict['Tempo'], (int, float)):
+            raise TypeError('Tempo must be a number.')
     if 'Modulation' in recDict:
         if not isinstance(recDict['Modulation'], (int, float)):
             raise TypeError('Modulation must be a number.')
@@ -393,7 +393,13 @@ def _parser(path):
         if 'PBW' in note:
             note['PBW'] = attributeSeq(map(eval, note['PBW'].split(',')))
         if 'PBY' in note:
-            note['PBY'] = attributeSeq(eval(item) for item in note['PBY'].split(',') if item != '')
+            PBYList = []
+            for item in note['PBY'].split(','):
+                if item != '':
+                    PBYList += [eval(item)]
+                else:
+                    PBYList += [0]
+            note['PBY'] = attributeSeq(PBYList)
         if 'PBS' in note:
             note['PBS'] = PBSSeq(map(eval, note['PBS'].split(';')))
         if 'VBR' in note:
