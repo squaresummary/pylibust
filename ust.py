@@ -104,6 +104,13 @@ class ustFile:
         notes, version, setting = _parser(path)
         return cls(notes, version, setting)
 
+    @property
+    def setting(self):
+        return self._settingDict
+
+    def setSetting(self, key: str, value):
+        self._settingDict[key] = value
+
     def save(self, path: str):
         _saver(self, path)
 
@@ -352,7 +359,19 @@ def _parser(path):
                 verRecord, setRecord, noteRecord = False, False, True
                 noteCount += 1
 
-    # 以下语句进一步处理各个属性的类型
+    # 以下语句进一步将[#SETTING]块的内容转换为字典并处理部分属性的类型
+    settingDict = dict(setting)
+    if 'Tempo' in settingDict:
+        settingDict['Tempo'] = eval(settingDict['Tempo'])
+        # 因为ust中经常有Tempo达到500000.00的情况，所以过大的Tempo将会被强行设定为120
+        if settingDict['Tempo'] > 300:
+            settingDict = 120
+    if 'Tracks' in settingDict:
+        settingDict['Tracks'] = eval(settingDict['Tracks'])
+    if 'Mode2' in settingDict:
+        settingDict['Mode2'] = eval(settingDict['Mode2'])
+
+    # 以下语句进一步处理各个音符属性的类型
     for note in notes:
         # 每个音符必须存在长度和音阶两个属性
         note['Length'] = eval(note['Length'])
