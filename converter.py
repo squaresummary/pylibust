@@ -44,10 +44,33 @@ def nn2ust(nnIter: Iterable[str]) -> ustFile:
             'VBR': attributeSeq([int(nnNote[8]), int(nnNote[10]), int(nnNote[9]), 0, 0, 0, 0, 0]),
             'PBW': attributeSeq(int(nnNote[3]) * 60 / len(nnPitchList) for i in range(len(nnPitchList))),
             'PBY': attributeSeq(nnPitchList),
-            'PBS': PBSSeq([0,0])
+            'PBS': PBSSeq([0, 0])
         })]
 
     return ustFile(ustNoteList, settingDict=ustHeader)
 
+
 # --------------------
+# The functions converting ustFile object to other format.
 # 将ust文件对象转换为其他格式的函数
+def ust2utaufile(ustFileObj: ustFile):
+    """
+    In order to avoid making wheel repeatedly, this function allows you to convert a pylibust.ustFile
+    object to a utaufile.Ustfile object and whereby you can use the functions in utaufile library.
+    为避免重复造轮子，这个函数可以将pylibust.ustFile对象转换为utaufile.Ustfile对象。籍此您可以使用utaufile库中的功能。
+    """
+    import utaufile
+    UstnoteList = []
+    for note in ustFileObj:
+        noteDict = {key: value for key, value in note.items()}
+        length = noteDict.pop('Length')
+        notenum = noteDict.pop('NoteNum')
+        lyric = noteDict.pop('Lyric')
+        UstnoteObj = utaufile.Ustnote(
+            length=length,
+            lyric=lyric,
+            notenum=notenum,
+            properties=noteDict
+        )
+        UstnoteList += [UstnoteObj]
+    return utaufile.Ustfile(properties=ustFileObj.setting ,note=UstnoteList)
