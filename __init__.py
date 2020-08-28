@@ -19,4 +19,4 @@ __version__ = 0.1
 
 
 from .ust import ustNote, ustFile, attributeSeq, envelopeSeq, PBSSeq # noqa
-from .converter import nn2ust # noqa
+from .converter import nn2ust, ust2utaufile # noqa
