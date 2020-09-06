@@ -20,6 +20,15 @@ import re
 
 __all__ = ['ustNote', 'ustFile', 'attributeSeq', 'envelopeSeq', 'PBSSeq']
 
+# 以下部分用于实现类型标注以增强代码的可维护性和可读性。
+# 如果你对此不甚了解，请参见 https://docs.python.org/zh-cn/3/library/typing.html。
+# The section below is used to implement type hint in order to make code
+# readable and maintainable. If you have no idea about it, please see
+# https://docs.python.org/zh-cn/3/library/typing.html.
+from typing import Any, Iterable, Mapping, NewType, Sequence, Tuple, Dict
+
+ustNoteType = NewType('ustNoteType', Mapping[str, Any])
+ustFileType = NewType('ustFileType', Sequence[ustNoteType])
 
 # --------------------
 # The implement of note class and file class.
@@ -31,7 +40,7 @@ class ustNote:
     这个类是对字典的简单封装。字典中存有UST文件的音符的属性。
     """
 
-    def __init__(self, attributeDict: dict, verify=True):
+    def __init__(self, attributeDict: Dict[str, Any], verify : bool = True):
         if verify:
             _attributeCheck(attributeDict)
         self._attribute = attributeDict
@@ -39,7 +48,7 @@ class ustNote:
     def __getitem__(self, key: str):
         return self._attribute[key]
 
-    def __setitem__(self, key: str, value):
+    def __setitem__(self, key: str, value: Any):
         self._attribute[key] = value
 
     def __delitem__(self, key: str):
@@ -78,7 +87,10 @@ class ustFile:
     这个类是对列表的简单封装，储存音符对象。
     """
 
-    def __init__(self, noteIter: iter, versionTuple=None, settingDict=None, verify=True):
+    def __init__(self, noteIter: Iterable[ustNoteType],
+                versionTuple: Tuple[str, ...] = None,
+                settingDict: Dict[str, Any] = None,
+                verify: bool = True):
         if versionTuple is None or versionTuple == ():
             versionTuple = ('UST Version1.2', 'Charset=UTF-8')
         if not isinstance(versionTuple, tuple):
@@ -108,7 +120,7 @@ class ustFile:
     def setting(self):
         return self._settingDict
 
-    def setSetting(self, key: str, value):
+    def setSetting(self, key: str, value: Any):
         self._settingDict[key] = value
 
     def save(self, path: str):
@@ -122,18 +134,18 @@ class ustFile:
         """
         return self._noteList[idx]
 
-    def __setitem__(self, idx: int, value):
+    def __setitem__(self, idx: int, value: Any):
         self._noteList[idx] = value
 
     def __delitem__(self, idx: int):
         del self._noteList[idx]
 
-    def __add__(self, other):
+    def __add__(self, other: ustFileType):
         if not isinstance(other, ustFile):
             raise TypeError('A ustFile is only able to add with a ustFile')
         return self._noteList + other
 
-    def __iadd__(self, other):
+    def __iadd__(self, other: ustFileType):
         if not isinstance(other, ustFile):
             raise TypeError('A ustFile is only able to add with a ustFile')
         self._noteList += other
@@ -174,23 +186,23 @@ class ustFile:
         pitches = [note['NoteNum'] for note in self._noteList if note]
         return (max(pitches), min(pitches))
 
-    def insert(self, idx, other):
+    def insert(self, idx: int, other: ustNoteType):
         if not isinstance(other, ustNote):
             other = ustNote(other)
         self._noteList.insert(idx, other)
 
-    def insertMany(self, idx, other):
+    def insertMany(self, idx: int, other: Iterable[ustNoteType]):
         for note in other:
             if not isinstance(note, ustNote):
                 note = ustNote(note)
             self._noteList.insert(idx, note)
 
-    def append(self, other):
+    def append(self, other: ustNoteType):
         if not isinstance(other, ustNote):
             other = ustNote(other)
         self._noteList.append(other)
 
-    def extend(self, other):
+    def extend(self, other: ustNoteType):
         for note in other:
             if not isinstance(note, ustNote):
                 note = ustNote(note)
@@ -206,6 +218,14 @@ class attributeSeq(list):
     这个类存储通常的序列属性。
     """
 
+    def __init__(self,attributeStr: str):
+        attributeList = attributeStr.split(',')
+        for item in attributeList:
+            if item == '':
+                self.append(0)
+            else:
+                self.append(eval(item))
+
     def __str__(self):
         return ','.join(str(item) for item in self)
 
@@ -216,9 +236,9 @@ class envelopeSeq(attributeSeq):
     这个类存储该死的包络线。飴屋加的`%`真是可恶。
     """
 
-    def __init__(self, envelope):
-        super().__init__()
-        for item in envelope:
+    def __init__(self, envelope: str):
+        envelopeList = envelope.split(',')
+        for item in envelopeList:
             if item == '%':
                 self.append(item)
             else:
@@ -232,6 +252,17 @@ class PBSSeq(attributeSeq):
     这个类存储第一个控制点与音符开头的时间和音高偏移量。该死的`;`。
     """
 
+    def __init__(self,PBS: str):
+        PBSList = PBS.split(';')
+        for item in PBSList:
+            if item == '':
+                self.append(0)
+            else:
+                self.append(eval(item))
+        
+        if len(self) > 2:
+            raise ValueError('The PBS only need 2 parameters, but {}'.format(len(self)))
+    
     def __str__(self):
         return ';'.join(str(item) for item in self)
 
@@ -314,7 +345,7 @@ def _attributeCheck(recDict):
 # --------------------
 # Read ust file
 # 读取ust文件
-def _parser(path):
+def _parser(path: str):
     # 以下变量用于存储读入的数据
     notes = []
     singleNote = []
@@ -333,8 +364,8 @@ def _parser(path):
     # 以下语句逐行读入ust文件并解析
     with open(path, 'rt', encoding=encodingDict['encoding']) as file:
         for row in file:
-            # 根据记录状态存储音符
-            if not row.strip()[0:2] == '[#':
+            # 根据记录状态存储音符 忽略空行
+            if row.strip()[0:2] != '[#' and row.strip() != '':
                 if verRecord:
                     version += [row.strip()]
                 if setRecord:
@@ -349,6 +380,11 @@ def _parser(path):
                         singleNote.clear()
                 if noteRecord:
                     singleNote += [tuple((i.strip() for i in row.split('=')))]
+            
+            # 当音轨结束时记录最后一个音符
+            if row.strip() == '[#TRACKEND]':
+                notes += [dict(singleNote)]
+                singleNote.clear()
 
             # 根据读入内容更改记录状态
             if row.strip() == '[#VERSION]':
@@ -373,56 +409,45 @@ def _parser(path):
 
     # 以下语句进一步处理各个音符属性的类型
     for note in notes:
-        # 每个音符必须存在长度和音阶两个属性
-        note['Length'] = eval(note['Length'])
-        note['NoteNum'] = eval(note['NoteNum'])
-
-        # 其他可选音符属性
-        if 'Overlap' in note:
-            note['Overlap'] = eval(note['Overlap']) if note['Overlap'] != '' else ''
-        if 'PreUtterance' in note:
-            note['PreUtterance'] = eval(note['PreUtterance']) if note['PreUtterance'] != '' else ''
-        if 'StartPoint' in note:
-            note['StartPoint'] = eval(note['StartPoint']) if note['StartPoint'] != '' else ''
-        if 'Tempo' in note:
-            # 因为飴屋／菖蒲在v0.4.18的更新中有`Tempo=0を無視するようにした`一项
-            note['Tempo'] = eval(note['Tempo']) if note['Tempo'] != '' else 0
-        if 'Modulation' in note:
-            note['Modulation'] = eval(note['Modulation']) if note['Modulation'] != '' else ''
-        if 'Intensity' in note:
-            note['Intensity'] = eval(note['Intensity']) if note['Intensity'] != '' else ''
-
-        # 其他可选包络线属性
-        if 'Envelope' in note:
-            note['Envelope'] = envelopeSeq(note['Envelope'].split(','))
-        if '@overlap' in note:
-            note['@overlap'] = eval(note['@overlap']) if note['@overlap'] != '' else ''
-        if '@preuttr' in note:
-            note['@preuttr'] = eval(note['@preuttr']) if note['@preuttr'] != '' else ''
-        if '@stpoint' in note:
-            note['@stpoint'] = eval(note['@stpoint']) if note['@stpoint'] != '' else ''
-
-        # 其他可选音高控制属性
-        if 'PBType' in note:
-            note['PBType'] = eval(note['PBType']) if note['PBType'] != '' else ''
-        if 'PBStart' in note:
-            note['PBStart'] = eval(note['PBStart']) if note['PBStart'] != '' else ''
-        if 'PitchBend' in note:
-            note['PitchBend'] = attributeSeq(map(eval, note['PitchBend'].split(',')))
-        if 'PBW' in note:
-            note['PBW'] = attributeSeq(map(eval, note['PBW'].split(',')))
-        if 'PBY' in note:
-            PBYList = []
-            for item in note['PBY'].split(','):
-                if item != '':
-                    PBYList += [eval(item)]
-                else:
-                    PBYList += [0]
-            note['PBY'] = attributeSeq(PBYList)
-        if 'PBS' in note:
-            note['PBS'] = PBSSeq(map(eval, note['PBS'].split(';')))
-        if 'VBR' in note:
-            note['VBR'] = attributeSeq(map(eval, note['VBR'].split(',')))
+        # 建立存储属性与对应策略的字典
+        strategyDict = {
+            # 必选属性 长度和音高
+            'Length': eval,
+            'NoteNum': eval,
+            # 其他可选音符属性
+            'Overlap': eval,
+            'PreUtterance': eval,
+            'StartPoint': eval,
+            'Tempo': eval,
+            'Modulation': eval,
+            'Intensity': eval,
+            # 其他可选包络线属性
+            'Envelope': envelopeSeq,
+            '@overlap': eval,
+            '@preuttr': eval,
+            '@stpoint': eval,
+            # 其他可选音高控制属性(Mode1)
+            'PBType': eval,
+            'PBStart': eval,
+            'PitchBend': attributeSeq,
+            # 其他可选音高控制属性(Mode2)
+            'PBW': attributeSeq,
+            'PBY': attributeSeq,
+            'PBS': PBSSeq,
+            'VBR': attributeSeq,
+        }
+        # 根据对应的属性选择策略 跳过值为空的和键未知的属性 为免报错值为空的键值对将会被记录下来删除
+        invaildAttributeList =[]
+        for attribute in note:
+            if note[attribute] != '':
+                policy = strategyDict.get(attribute)
+                if policy != None:
+                    note[attribute] = policy(note[attribute])
+            else:
+                invaildAttributeList += [attribute]
+        for attribute in invaildAttributeList:
+            del note[attribute]
+        invaildAttributeList.clear()
 
     return notes, tuple(version), dict(setting)
 
@@ -430,6 +455,6 @@ def _parser(path):
 # --------------------
 # Save ust file
 # 存储ust文件
-def _saver(ustObj, path):
+def _saver(ustObj, path: str):
     with open(path, 'xt', encoding='utf8') as file:
         file.write(str(ustObj))
